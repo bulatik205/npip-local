@@ -1,5 +1,4 @@
 class Styles:
-    # Фреймы
     FRAME = """
         QFrame {
             border: 1px solid #ccc;
@@ -8,7 +7,6 @@ class Styles:
         }
     """
     
-    # GroupBox
     GROUP = """
         QGroupBox {
             border: 1px solid #ccc;
@@ -24,7 +22,6 @@ class Styles:
         }
     """
     
-    # Поле ввода
     INPUT = """
         QLineEdit {
             padding: 10px;

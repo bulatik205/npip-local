@@ -6,7 +6,6 @@ class TopBanner(QFrame):
         super().__init__()
         layout = QHBoxLayout(self)
         
-        # Первый блок
         tutorial_frame = QFrame()
         tutorial_frame.setStyleSheet(Styles.FRAME)
         tutorial_layout = QVBoxLayout(tutorial_frame)
@@ -15,7 +14,6 @@ class TopBanner(QFrame):
         tutorial.setStyleSheet("font-size: 14px; font-weight: 400; border: none;")
         tutorial_layout.addWidget(tutorial)
         
-        # Второй блок
         tip_frame = QFrame()
         tip_frame.setStyleSheet(Styles.FRAME)
         tip_layout = QVBoxLayout(tip_frame)
