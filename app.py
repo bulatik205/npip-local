@@ -6,6 +6,7 @@ from components.bottom_bar import BottomBar
 from components.terminal_block import TerminalBlock
 from services.validator import Validator
 from services.executor import CommandExecutor
+from services.config_manager import get_save_mode
 from styles import Styles
 import tempfile
 import os
@@ -125,27 +126,51 @@ class NginxConfigurator(QMainWindow):
             else:
                 self.terminal.set_status(f"Ошибка: {error_msg}", True)
         
-        commands = [
-            (f"pkexec cp {tmpfile.name} /etc/nginx/sites-available/{domain}", 
-             f"Создание конфига {domain}", True),
-            (f"pkexec chmod 644 /etc/nginx/sites-available/{domain}", 
-             f"Права на конфиг", False),
-            (f"pkexec ln -sf /etc/nginx/sites-available/{domain} /etc/nginx/sites-enabled/{domain}", 
-             f"Активация сайта {domain}", True),
-            (f"pkexec nginx -t", 
-             "Проверка nginx", True),
-            (f"pkexec systemctl reload nginx", 
-             "Перезагрузка nginx", True),
-            (f"pkexec mkdir -p /var/www/{domain}", 
-             f"Директория /var/www/{domain}", True),
-            (f"pkexec chown -R www-data:www-data /var/www/{domain}", 
-             f"Права www-data на {domain}", False),
-            (f"pkexec chmod -R 755 /var/www/{domain}", 
-             f"Права на файлы {domain}", False),
-            (f"pkexec sh -c 'echo 127.0.0.1 {domain}.local www.{domain}.local >> /etc/hosts'", 
-             f"Добавление в /etc/hosts", True),
-            (f"pkexec bash -c 'cp {tmp_html.name} /var/www/{domain}/index.html && chown www-data:www-data /var/www/{domain}/index.html && chmod 644 /var/www/{domain}/index.html'", 
-             f"Создание index.html", True),
-        ]
+        save_mode = get_save_mode()
+        
+        if save_mode:
+            # Пошаговый режим — каждая команда с подтверждением
+            commands = [
+                (f"pkexec cp {tmpfile.name} /etc/nginx/sites-available/{domain}", 
+                 f"Создание конфига {domain}", True),
+                (f"pkexec chmod 644 /etc/nginx/sites-available/{domain}", 
+                 f"Права на конфиг", False),
+                (f"pkexec ln -sf /etc/nginx/sites-available/{domain} /etc/nginx/sites-enabled/{domain}", 
+                 f"Активация сайта {domain}", True),
+                (f"pkexec nginx -t", 
+                 "Проверка nginx", True),
+                (f"pkexec systemctl reload nginx", 
+                 "Перезагрузка nginx", True),
+                (f"pkexec mkdir -p /var/www/{domain}", 
+                 f"Директория /var/www/{domain}", True),
+                (f"pkexec chown -R www-data:www-data /var/www/{domain}", 
+                 f"Права www-data на {domain}", False),
+                (f"pkexec chmod -R 755 /var/www/{domain}", 
+                 f"Права на файлы {domain}", False),
+                (f"pkexec sh -c 'echo 127.0.0.1 {domain}.local www.{domain}.local >> /etc/hosts'", 
+                 f"Добавление в /etc/hosts", True),
+                (f"pkexec bash -c 'cp {tmp_html.name} /var/www/{domain}/index.html && chown www-data:www-data /var/www/{domain}/index.html && chmod 644 /var/www/{domain}/index.html'", 
+                 f"Создание index.html", True),
+            ]
+        else:
+            # Быстрый режим — всё одной командой
+            combined = (
+                f"cp {tmpfile.name} /etc/nginx/sites-available/{domain} && "
+                f"chmod 644 /etc/nginx/sites-available/{domain} && "
+                f"ln -sf /etc/nginx/sites-available/{domain} /etc/nginx/sites-enabled/{domain} && "
+                f"nginx -t && "
+                f"systemctl reload nginx && "
+                f"mkdir -p /var/www/{domain} && "
+                f"chown -R www-data:www-data /var/www/{domain} && "
+                f"chmod -R 755 /var/www/{domain} && "
+                f"echo 127.0.0.1 {domain}.local www.{domain}.local >> /etc/hosts && "
+                f"cp {tmp_html.name} /var/www/{domain}/index.html && "
+                f"chown www-data:www-data /var/www/{domain}/index.html && "
+                f"chmod 644 /var/www/{domain}/index.html"
+            )
+            commands = [
+                (f"pkexec bash -c '{combined}'", 
+                 f"Создание и настройка сайта {domain} (одной командой)", True),
+            ]
         
         self.executor.execute_commands(commands, on_finish, [cleanup])
