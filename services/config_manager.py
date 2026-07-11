@@ -4,7 +4,10 @@ import os
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json")
 
 DEFAULT_CONFIG = {
-    "saveMode": True
+    "saveMode": True,
+    "ngnixPath": "/etc/nginx/",
+    "sitesSrcPath": "/var/www/",
+    "hosts": "/etc/hosts"
 }
 
 
