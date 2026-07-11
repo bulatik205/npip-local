@@ -1,0 +1,69 @@
+# NPIP — Обзор кодовой базы (v0.3.0)
+
+## Точки входа
+
+### main.py
+- Создаёт QApplication и запускает окно NginxConfigurator
+- Минимальная загрузка
+
+### app.py — NginxConfigurator (QMainWindow)
+- Главное окно: заголовок "NPIP", размер 800x600, мин. 500x300
+- Слева вверху: кнопка "Настройки" (статичная зелёная, открывает SettingsWindow)
+- Форма ввода домена, терминал, нижняя панель
+- `generate_config()` — валидирует домен, проверяет систему, создаёт временные файлы, затем:
+  - **saveMode=true**: пошаговое выполнение с pkexec для каждой команды
+  - **saveMode=false**: одна объединённая pkexec bash -c команда
+- Использует: SettingsForm, SettingsWindow, TerminalBlock, BottomBar, Executor, Validator
+
+## Компоненты
+
+### components/settings_form.py — SettingsForm (QGroupBox)
+- Поле ввода имени домена ("Введите название проекта")
+- Использует Styles.INPUT для QLineEdit
+
+### components/settings_window.py — SettingsWindow (QDialog)
+- Размер: 600x400, заголовок: "Настройки"
+- **Переключатель Save mode**: QPushButton стилизованный под тумблер, текст "true"/"false", зелёный/красный
+- **Поля ввода путей**: ngnixPath, sitesSrcPath, hosts — QLineEdit со стилем Styles.INPUT
+- **Кнопка "Сохранить"**: записывает значения путей в config.json
+- Испускает сигнал `save_mode_changed` при переключении
+- Состояние хранится в `_save_mode_value` (не в QPushButton::isChecked)
+
+### components/terminal_block.py — TerminalBlock
+- Цветной вывод терминала (success/error/command/output)
+- Кнопка копирования в буфер обмена
+
+### components/bottom_bar.py — BottomBar
+- Панель действий с кнопкой "Создать" и т.д.
+
+### components/top_banner.py — TopBanner
+- Информационный баннер с подсказками по использованию
+
+## Сервисы
+
+### services/config_manager.py
+- Читает/записывает config.json в корне проекта
+- Функции: load_config(), save_config(), get_save_mode(), set_save_mode()
+- DEFAULT_CONFIG: saveMode=true, ngnixPath=/etc/nginx/, sitesSrcPath=/var/www/, hosts=/etc/hosts
+
+### services/executor.py
+- CommandWorker (QThread) — последовательное выполнение команд в фоне
+- CommandExecutor — управление диалогами подтверждения и жизненным циклом worker
+- Сигналы: command_output, command_finished, all_finished
+
+### services/validator.py
+- Валидация имени домена (латиница, цифры, дефис, 3-63 символа)
+- Проверки: nginx установлен, директории существуют, конфиг свободен
+
+## Конфигурация
+
+### config.json
+- Файл постоянных настроек
+- Поля: saveMode (bool), ngnixPath (str), sitesSrcPath (str), hosts (str)
+
+## Стили
+
+### styles.py
+- FRAME, GROUP, INPUT стили
+- button() — статический метод, возвращает стиль QPushButton
+- terminal_button() — стиль второстепенной кнопки
