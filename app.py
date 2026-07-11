@@ -1,10 +1,12 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 from PyQt6.QtCore import Qt
 from components.settings_form import SettingsForm
+from components.settings_window import SettingsWindow
 from components.bottom_bar import BottomBar
 from components.terminal_block import TerminalBlock
 from services.validator import Validator
 from services.executor import CommandExecutor
+from styles import Styles
 import tempfile
 import os
 
@@ -20,19 +22,33 @@ class NginxConfigurator(QMainWindow):
         layout = QVBoxLayout(central_widget)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
-        self.settings = SettingsForm()
+        # Кнопка "Настройки" в левом верхнем углу
+        top_layout = QHBoxLayout()
+        self.settings_btn = QPushButton("Настройки")
+        self.settings_btn.setFixedWidth(150)
+        self.settings_btn.setStyleSheet(Styles.button("#458a7d"))
+        self.settings_btn.clicked.connect(self.open_settings)
+        top_layout.addWidget(self.settings_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        top_layout.addStretch()
+        layout.addLayout(top_layout)
+        
+        self.settings_form = SettingsForm()
         self.terminal = TerminalBlock()
         self.bottom = BottomBar()
         self.executor = CommandExecutor(self.terminal)
         
         self.bottom.on_create(self.generate_config)
         
-        layout.addWidget(self.settings)
+        layout.addWidget(self.settings_form)
         layout.addWidget(self.terminal)
         layout.addWidget(self.bottom)
     
+    def open_settings(self):
+        dialog = SettingsWindow(self)
+        dialog.exec()
+
     def generate_config(self):
-        domain = self.settings.get_domain()
+        domain = self.settings_form.get_domain()
         
         valid, msg = Validator.validate_domain_name(domain)
         if not valid:
