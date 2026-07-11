@@ -1,11 +1,15 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 from PyQt6.QtCore import Qt
-from components.top_banner import TopBanner
 from components.settings_form import SettingsForm
+from components.settings_window import SettingsWindow
 from components.bottom_bar import BottomBar
 from components.terminal_block import TerminalBlock
 from services.validator import Validator
 from services.executor import CommandExecutor
+from services.config_manager import get_save_mode
+from styles import Styles
+import tempfile
+import os
 
 class NginxConfigurator(QMainWindow):
     def __init__(self):
@@ -19,21 +23,33 @@ class NginxConfigurator(QMainWindow):
         layout = QVBoxLayout(central_widget)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
-        #self.banner = TopBanner()
-        self.settings = SettingsForm()
+        # Кнопка "Настройки" в левом верхнем углу
+        top_layout = QHBoxLayout()
+        self.settings_btn = QPushButton("Настройки")
+        self.settings_btn.setFixedWidth(150)
+        self.settings_btn.setStyleSheet(Styles.button("#458a7d"))
+        self.settings_btn.clicked.connect(self.open_settings)
+        top_layout.addWidget(self.settings_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        top_layout.addStretch()
+        layout.addLayout(top_layout)
+        
+        self.settings_form = SettingsForm()
         self.terminal = TerminalBlock()
         self.bottom = BottomBar()
-        
-        self.bottom.on_create(self.generate_config)
         self.executor = CommandExecutor(self.terminal)
         
-        #layout.addWidget(self.banner)
-        layout.addWidget(self.settings)
+        self.bottom.on_create(self.generate_config)
+        
+        layout.addWidget(self.settings_form)
         layout.addWidget(self.terminal)
         layout.addWidget(self.bottom)
     
+    def open_settings(self):
+        dialog = SettingsWindow(self)
+        dialog.exec()
+
     def generate_config(self):
-        domain = self.settings.get_domain()
+        domain = self.settings_form.get_domain()
         
         valid, msg = Validator.validate_domain_name(domain)
         if not valid:
@@ -42,9 +58,14 @@ class NginxConfigurator(QMainWindow):
             return
         
         self.terminal.add_success(f"✓ Имя '{domain}' валидно")
-        
         self.terminal.add_command("Проверка системы...")
-        results = Validator.run_all_checks(domain)
+        
+        results = [
+            ("Nginx", Validator.check_nginx_installed()),
+            ("Директории", Validator.check_directories_exist()),
+            ("Валидация имени", Validator.validate_domain_name(domain)),
+            ("Конфиг", Validator.check_config_exists(domain)),
+        ]
         
         all_ok = True
         for check_name, (ok, msg) in results:
@@ -77,23 +98,79 @@ class NginxConfigurator(QMainWindow):
     }}
 }}"""
         
-        commands = [
-            ("sudo apt update", "Обновление пакетов", True),
-            (f"echo '{config_content}' | sudo tee /etc/nginx/sites-available/{domain} > /dev/null", 
-             f"Создание конфига /etc/nginx/sites-available/{domain}", True),
-            (f"sudo ln -s /etc/nginx/sites-available/{domain} /etc/nginx/sites-enabled/{domain}", 
-             f"Активация сайта {domain}", True),
-            ("sudo nginx -t", "Проверка конфигурации nginx", True),
-            ("sudo systemctl reload nginx", "Перезагрузка nginx", True),
-            (f"echo '127.0.0.1 {domain}.local www.{domain}.local' | sudo tee -a /etc/hosts", 
-             f"Добавление {domain}.local в /etc/hosts", True),
-        ]
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>{domain}.local</title></head>
+<body><h1>{domain}.local работает!</h1></body>
+</html>"""
         
-        for cmd, desc, need_confirm in commands:
-            success, output = self.executor.execute(cmd, desc, need_confirm)
-            if not success:
-                self.terminal.set_status(f"Ошибка при выполнении: {desc}", True)
-                return
+        tmpfile = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.conf', encoding='utf-8')
+        tmpfile.write(config_content)
+        tmpfile.close()
         
-        self.terminal.add_success(f"✅ Сайт {domain}.local успешно создан и активирован!")
-        self.terminal.set_status(f"Готово! Откройте http://{domain}.local в браузере")
+        tmp_html = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.html', encoding='utf-8')
+        tmp_html.write(html_content)
+        tmp_html.close()
+        
+        def cleanup():
+            for f in [tmpfile.name, tmp_html.name]:
+                try:
+                    os.unlink(f)
+                except:
+                    pass
+        
+        def on_finish(success, error_msg):
+            if success:
+                self.terminal.add_success(f"✅ Сайт {domain}.local успешно создан и активирован!")
+                self.terminal.set_status(f"Готово! http://{domain}.local")
+            else:
+                self.terminal.set_status(f"Ошибка: {error_msg}", True)
+        
+        save_mode = get_save_mode()
+        
+        if save_mode:
+            # Пошаговый режим — каждая команда с подтверждением
+            commands = [
+                (f"pkexec cp {tmpfile.name} /etc/nginx/sites-available/{domain}", 
+                 f"Создание конфига {domain}", True),
+                (f"pkexec chmod 644 /etc/nginx/sites-available/{domain}", 
+                 f"Права на конфиг", False),
+                (f"pkexec ln -sf /etc/nginx/sites-available/{domain} /etc/nginx/sites-enabled/{domain}", 
+                 f"Активация сайта {domain}", True),
+                (f"pkexec nginx -t", 
+                 "Проверка nginx", True),
+                (f"pkexec systemctl reload nginx", 
+                 "Перезагрузка nginx", True),
+                (f"pkexec mkdir -p /var/www/{domain}", 
+                 f"Директория /var/www/{domain}", True),
+                (f"pkexec chown -R www-data:www-data /var/www/{domain}", 
+                 f"Права www-data на {domain}", False),
+                (f"pkexec chmod -R 755 /var/www/{domain}", 
+                 f"Права на файлы {domain}", False),
+                (f"pkexec sh -c 'echo 127.0.0.1 {domain}.local www.{domain}.local >> /etc/hosts'", 
+                 f"Добавление в /etc/hosts", True),
+                (f"pkexec bash -c 'cp {tmp_html.name} /var/www/{domain}/index.html && chown www-data:www-data /var/www/{domain}/index.html && chmod 644 /var/www/{domain}/index.html'", 
+                 f"Создание index.html", True),
+            ]
+        else:
+            # Быстрый режим — всё одной командой
+            combined = (
+                f"cp {tmpfile.name} /etc/nginx/sites-available/{domain} && "
+                f"chmod 644 /etc/nginx/sites-available/{domain} && "
+                f"ln -sf /etc/nginx/sites-available/{domain} /etc/nginx/sites-enabled/{domain} && "
+                f"nginx -t && "
+                f"systemctl reload nginx && "
+                f"mkdir -p /var/www/{domain} && "
+                f"chown -R www-data:www-data /var/www/{domain} && "
+                f"chmod -R 755 /var/www/{domain} && "
+                f"echo 127.0.0.1 {domain}.local www.{domain}.local >> /etc/hosts && "
+                f"cp {tmp_html.name} /var/www/{domain}/index.html && "
+                f"chown www-data:www-data /var/www/{domain}/index.html && "
+                f"chmod 644 /var/www/{domain}/index.html"
+            )
+            commands = [
+                (f"pkexec bash -c '{combined}'", 
+                 f"Создание и настройка сайта {domain} (одной командой)", True),
+            ]
+        
+        self.executor.execute_commands(commands, on_finish, [cleanup])

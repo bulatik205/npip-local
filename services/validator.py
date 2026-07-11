@@ -84,7 +84,7 @@ class Validator:
         results = []
         
         results.append(("Nginx", Validator.check_nginx_installed()))
-        results.append(("Права sudo", Validator.check_sudo_rights()))
+        #results.append(("Права sudo", Validator.check_sudo_rights()))
         results.append(("Директории", Validator.check_directories_exist()))
         
         if domain:
