@@ -1,0 +1,68 @@
+==================================================
+name: npip-1
+config.json: {
+    "saveMode": true,
+    "ngnixPath": "/etc/nginx/",
+    "sitesSrcPath": "/var/www/",
+    "hosts": "/etc/hosts/"
+}
+==================================================
+✓ Имя 'npip-1' валидно
+● Проверка системы...
+✓ Nginx: Nginx установлен
+✓ Директории: Все директории на месте
+✓ Валидация имени: Имя валидно
+✓ Конфиг: Конфиг свободен
+● Начинаю создание конфигурации...
+● ● Команда: Создание конфига npip-1
+$ pkexec cp /tmp/tmp7rrgh90x.conf /etc/nginx/sites-available/npip-1
+✓ Успешно выполнено
+● ● Команда: Права на конфиг
+$ pkexec chmod 644 /etc/nginx/sites-available/npip-1
+✓ Успешно выполнено
+● ● Команда: Активация сайта npip-1
+$ pkexec ln -sf /etc/nginx/sites-available/npip-1 /etc/nginx/sites-enabled/npip-1
+✓ Успешно выполнено
+● ● Команда: Проверка nginx
+$ pkexec nginx -t
+✓ Успешно выполнено
+● ● Команда: Перезагрузка nginx
+$ pkexec systemctl reload nginx
+✓ Успешно выполнено
+● ● Команда: Директория /var/www/npip-1
+$ pkexec mkdir -p /var/www/npip-1
+✓ Успешно выполнено
+● ● Команда: Права www-data на npip-1
+$ pkexec chown -R www-data:www-data /var/www/npip-1
+✓ Успешно выполнено
+● ● Команда: Права на файлы npip-1
+$ pkexec chmod -R 755 /var/www/npip-1
+✓ Успешно выполнено
+● ● Команда: Добавление в /etc/hosts
+$ pkexec sh -c 'echo 127.0.0.1 npip-1.local www.npip-1.local >> /etc/hosts'
+✓ Успешно выполнено
+● ● Команда: Создание index.html
+$ pkexec bash -c 'cp /tmp/tmpxpey3rml.html /var/www/npip-1/index.html && chown www-data:www-data /var/www/npip-1/index.html && chmod 644 /var/www/npip-1/index.html'
+✓ Успешно выполнено
+✅ Сайт npip-1.local успешно создан и активирован!
+
+==================================================
+name: npip
+config.json: {
+    "saveMode": false,
+    "ngnixPath": "/etc/nginx/",
+    "sitesSrcPath": "/var/www/",
+    "hosts": "/etc/hosts/"
+}
+==================================================
+✓ Имя 'npip' валидно
+● Проверка системы...
+✓ Nginx: Nginx установлен
+✓ Директории: Все директории на месте
+✓ Валидация имени: Имя валидно
+✓ Конфиг: Конфиг свободен
+● Начинаю создание конфигурации...
+● ● Команда: Создание и настройка сайта npip (одной командой)
+$ pkexec bash -c 'cp /tmp/tmpxpbt7w4s.conf /etc/nginx/sites-available/npip && chmod 644 /etc/nginx/sites-available/npip && ln -sf /etc/nginx/sites-available/npip /etc/nginx/sites-enabled/npip && nginx -t && systemctl reload nginx && mkdir -p /var/www/npip && chown -R www-data:www-data /var/www/npip && chmod -R 755 /var/www/npip && echo 127.0.0.1 npip.local www.npip.local >> /etc/hosts && cp /tmp/tmpfrlfcmjf.html /var/www/npip/index.html && chown www-data:www-data /var/www/npip/index.html && chmod 644 /var/www/npip/index.html'
+✓ Успешно выполнено
+✅ Сайт npip.local успешно создан и активирован!

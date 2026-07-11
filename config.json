@@ -1,0 +1,6 @@
+{
+    "saveMode": false,
+    "ngnixPath": "/etc/nginx/",
+    "sitesSrcPath": "/var/www/",
+    "hosts": "/etc/hosts/"
+}

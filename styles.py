@@ -43,7 +43,7 @@ class Styles:
                 background-color: {bg_color};
                 color: white;
                 padding: 7px 10px;
-                border: 1px solid #777;
+                border: 1px solid #fff;
                 border-radius: 10px;
                 font-size: 10px;
                 font-weight: bold;
